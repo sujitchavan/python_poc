@@ -6,7 +6,8 @@ import os
 import Registry
 import win32serviceutil
 import File
-
+import EventViewer
+from datetime import datetime
 
 def downloadclient():
     print('Downloading client')
@@ -18,7 +19,10 @@ def downloadclient():
 
 # Capability Check: Web Req download, MSI Installation, Windows Registry API
 def test_installenrollclient():
-    Registry.delete_registry(r'SOFTWARE\Policies\Hewlett-Packard\HPTechPulse\AssetLocation')
+    print('Test Case 1 Started')
+    Registry.write_registry(r'SOFTWARE\Policies\Hewlett-Packard\HPTechPulse\AssetLocation', 
+        'DeviceLocation', 
+        'Pune\\baner\\AmarApex\\HP1')
     downloadclient()
     print('Installing and Enrolling client')
     subprocess.call('msiexec /i %s CPIN=%s SERVER=%s' % ('HPTechPulse.msi', 'S44XiHmq', 'https://usdevms.daas.hppipeline.com/'), shell=True)
@@ -39,6 +43,7 @@ def test_installenrollclient():
 
 # Capability Check: File Operartions
 def test_devicesbchangeeventonenroll():
+    print('Test Case 2 Started')
     time.sleep(150)
 
     val = File.search_text_in_file('C:\\ProgramData\\HP\\StreamLog\\LHAgent.exe\\*.log', 
@@ -55,6 +60,7 @@ def test_devicesbchangeeventonenroll():
 
 # Capability Check: Windows Service API
 def test_bitlockereventsentonservicerestart():
+    print('Test Case 3 Started')
     # Restart LHAgent service
     print('Restarting LHAgent service')
     win32serviceutil.RestartService("hpLHAgent")
@@ -73,19 +79,19 @@ def test_bitlockereventsentonservicerestart():
         assert False
         print("Third Test Case Failed")
 
-
-# device heirachy location event on change validation and data validation
+# Check event
 def test_deviceheirarchylocation():
+    print('Test Case 4 Started')
     Registry.write_registry(r'SOFTWARE\Policies\Hewlett-Packard\HPTechPulse\AssetLocation', 
         'DeviceLocation', 
-        'Pune\\baner\\AmarApex\\HP1')
+        'Pune\\baner\\AmarApex\\HP2')
     
     time.sleep(5)
 
     val = File.search_text_in_file('C:\\ProgramData\\HP\\StreamLog\\LHAgent.exe\\*.log', 
         "AwsIot:Publish event success, Event: DeviceHierarchyLocationUpdated", 
-        "DeviceHierarchyLocationUpdated")    
-
+        "DeviceHierarchyLocationUpdated")
+    
     if(val == True):
         print("Fourth Test Case Passed")
         assert True
@@ -94,4 +100,16 @@ def test_deviceheirarchylocation():
         assert False
 
 
-# event viewer : client crash validation
+# Capability Check: event viewer
+def test_checkcrash():
+    print('Test Case 5 Started')
+    dt_string = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print("DateTime : ", dt_string)
+    val = EventViewer.check_crash_in_event_viewer('localhost', 'Application', dt_string, 'LHAgent.exe')
+
+    if val == False:
+        print("Fifth Test Case Passed")
+        assert True
+    else:
+        print("Fifth Test Case Failed")
+        assert False
